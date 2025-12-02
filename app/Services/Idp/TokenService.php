@@ -104,7 +104,12 @@ class TokenService
             ->where('state', $request->input('state'))
             ->first();
 
-        if ($session && $session->code_challenge) {
+        // PKCE検証: セッションが存在し、code_challengeが設定されている場合
+        if ($session && isset($session->code_challenge) && $session->code_challenge) {
+            if (!$request->has('code_verifier')) {
+                abort(400, 'code_verifier is required');
+            }
+            
             $codeVerifier = $request->code_verifier;
             $codeChallenge = OidcHelper::base64url_encode(hash('sha256', $codeVerifier, true));
             
@@ -120,13 +125,8 @@ class TokenService
         $refreshToken = null;
         
         // refreshTokenが存在する場合のみ取得
-        if ($accessToken->token && $accessToken->token->refreshToken) {
+        if ($accessToken->token && isset($accessToken->token->refreshToken) && $accessToken->token->refreshToken) {
             $refreshToken = $accessToken->token->refreshToken;
-        }
-
-        // PKCE検証: セッションが存在し、code_challengeが設定されている場合は必須
-        if ($session && $session->code_challenge && !$request->has('code_verifier')) {
-            abort(400, 'code_verifier is required');
         }
 
         $idToken = $this->createIdToken($user, $client, $scopes, $session->nonce ?? null);
