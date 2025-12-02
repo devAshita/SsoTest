@@ -79,20 +79,37 @@ DB_PASSWORD=
 php artisan key:generate
 ```
 
-### 4. データベースマイグレーション
+### 4. Passportのマイグレーションファイルの公開（開発環境のみ）
+
+**注意**: この手順は開発環境で1回だけ実行し、生成されたマイグレーションファイルをGitにコミットしてください。
+
+```bash
+php artisan vendor:publish --tag=passport-migrations
+```
+
+これにより、以下のマイグレーションファイルが`database/migrations`に生成されます：
+- `2016_06_01_000001_create_oauth_auth_codes_table.php`
+- `2016_06_01_000002_create_oauth_access_tokens_table.php`
+- `2016_06_01_000003_create_oauth_refresh_tokens_table.php`
+- `2016_06_01_000004_create_oauth_clients_table.php`
+- `2016_06_01_000005_create_oauth_personal_access_clients_table.php`
+
+これらのファイルをGitにコミットすれば、本番環境では`migrate`のみで済みます。
+
+### 5. データベースマイグレーション
 
 ```bash
 php artisan migrate
 ```
 
-### 5. Passportのセットアップ（IDPのみ）
+### 6. Passportのセットアップ（IDPのみ）
 
 ```bash
 php artisan passport:install
 php artisan passport:keys
 ```
 
-### 6. OAuth 2.0クライアントの作成（IDPで実行）
+### 7. OAuth 2.0クライアントの作成（IDPで実行）
 
 IDPサーバーで以下のコマンドを実行します：
 
@@ -120,7 +137,7 @@ OIDC_CLIENT_SECRET=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
 **注意**: Client Secretは一度しか表示されないため、必ずコピーして安全に保管してください。
 
-### 7. テストユーザーの作成
+### 8. テストユーザーの作成
 
 ```bash
 php artisan tinker
@@ -178,5 +195,51 @@ php artisan serve --port=8001
 
 ## デプロイ
 
-桜レンタルサーバーへのデプロイ手順は計画書を参照してください。
+### 開発環境での準備
+
+1. Passportのマイグレーションファイルを公開（1回のみ）
+   ```bash
+   php artisan vendor:publish --tag=passport-migrations
+   ```
+
+2. マイグレーションファイルをGitにコミット
+   ```bash
+   git add database/migrations/
+   git commit -m "Add Passport migrations"
+   ```
+
+### 本番環境でのデプロイ手順
+
+1. ソースコードをデプロイ（Gitからクローンまたはプル）
+2. 依存関係のインストール
+   ```bash
+   composer install --no-dev --optimize-autoloader
+   ```
+3. 環境変数の設定（`.env`ファイル）
+4. アプリケーションキーの生成
+   ```bash
+   php artisan key:generate
+   ```
+5. **データベースマイグレーションの実行**
+   ```bash
+   php artisan migrate --force
+   ```
+   **注意**: 本番環境では`vendor:publish`は不要です。マイグレーションファイルは既にGitに含まれています。
+6. Passportのセットアップ（IDPのみ）
+   ```bash
+   php artisan passport:install
+   php artisan passport:keys
+   ```
+7. OAuth 2.0クライアントの作成（IDPで実行）
+   ```bash
+   php artisan passport:client
+   ```
+8. キャッシュの最適化
+   ```bash
+   php artisan config:cache
+   php artisan route:cache
+   php artisan view:cache
+   ```
+
+桜レンタルサーバーへのデプロイ手順の詳細は計画書を参照してください。
 

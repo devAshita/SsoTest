@@ -26,8 +26,6 @@ class TokenService
             'scopes' => $params['scope'],
             'revoked' => false,
             'expires_at' => now()->addMinutes(10),
-            'created_at' => now(),
-            'updated_at' => now(),
         ]);
 
         DB::table('oidc_sessions')->insert([
