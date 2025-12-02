@@ -12,7 +12,7 @@ Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
-Route::get('/oauth/authorize', [OidcController::class, 'authorize'])->middleware('web');
+Route::get('/oauth/authorize', [OidcController::class, 'authorizeRequest'])->middleware('web');
 Route::post('/oauth/authorize', [OidcController::class, 'approve'])->middleware('web')->name('oauth.authorize');
 Route::post('/oauth/token', [OidcController::class, 'token']);
 Route::get('/oauth/userinfo', [OidcController::class, 'userinfo'])->middleware('auth:api');

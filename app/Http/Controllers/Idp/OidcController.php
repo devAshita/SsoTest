@@ -26,7 +26,7 @@ class OidcController extends Controller
         return response()->json($this->oidcService->getJwks());
     }
 
-    public function authorize(Request $request)
+    public function authorizeRequest(Request $request)
     {
         $request->validate([
             'client_id' => 'required',
