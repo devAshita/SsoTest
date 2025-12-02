@@ -144,13 +144,17 @@ class TokenService
 
         $builder = $config->builder()
             ->issuedBy(config('oidc.idp.issuer'))
-            ->permittedFor($client->id)
+            ->permittedFor((string) $client->id)
             ->identifiedBy(Str::random(40))
             ->issuedAt($now)
             ->expiresAt($expiresAt)
             ->withClaim('sub', (string) $user->id)
-            ->withClaim('auth_time', $now->getTimestamp())
-            ->withClaim('nonce', $nonce);
+            ->withClaim('auth_time', $now->getTimestamp());
+        
+        // nonceがnullでない場合のみ追加
+        if ($nonce !== null) {
+            $builder->withClaim('nonce', $nonce);
+        }
 
         if (in_array('profile', $scopes)) {
             $builder->withClaim('name', $user->name);
