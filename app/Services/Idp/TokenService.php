@@ -37,7 +37,7 @@ class TokenService
             ->first();
         
         if ($existingSession) {
-            // 既存のセッションを更新
+            // 既存のセッションを更新（authorization_codeを保存）
             DB::table('oidc_sessions')
                 ->where('id', $existingSession->id)
                 ->update([
@@ -46,11 +46,12 @@ class TokenService
                     'state' => $params['state'],
                     'code_challenge' => $params['code_challenge'] ?? null,
                     'code_challenge_method' => $params['code_challenge_method'] ?? null,
+                    'authorization_code' => $code,  // authorization_codeを保存
                     'expires_at' => now()->addHours(1),
                     'updated_at' => now(),
                 ]);
         } else {
-            // 新規セッションを挿入
+            // 新規セッションを挿入（authorization_codeを保存）
             DB::table('oidc_sessions')->insert([
                 'user_id' => $user->id,
                 'session_id' => $sessionId,
@@ -59,6 +60,7 @@ class TokenService
                 'state' => $params['state'],
                 'code_challenge' => $params['code_challenge'] ?? null,
                 'code_challenge_method' => $params['code_challenge_method'] ?? null,
+                'authorization_code' => $code,  // authorization_codeを保存
                 'expires_at' => now()->addHours(1),
                 'created_at' => now(),
                 'updated_at' => now(),
@@ -99,9 +101,10 @@ class TokenService
             abort(400, 'Invalid authorization code');
         }
 
+        // authorization_codeを使ってセッションを検索
         $session = DB::table('oidc_sessions')
+            ->where('authorization_code', $request->code)
             ->where('client_id', $request->client_id)
-            ->where('state', $request->input('state'))
             ->first();
 
         // PKCE検証: セッションが存在し、code_challengeが設定されている場合

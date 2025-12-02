@@ -16,6 +16,7 @@ return new class extends Migration
             $table->text('id_token')->nullable();
             $table->string('nonce')->nullable();
             $table->string('state')->nullable();
+            $table->string('authorization_code')->nullable()->index();  // authorization_codeを追加
             $table->string('code_challenge')->nullable();
             $table->string('code_challenge_method')->nullable();
             $table->timestamp('expires_at');
