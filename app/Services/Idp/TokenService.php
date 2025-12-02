@@ -117,7 +117,12 @@ class TokenService
         $scopes = explode(' ', $authCode->scopes);
 
         $accessToken = $user->createToken('access_token', $scopes, $client);
-        $refreshToken = $accessToken->token->refreshToken;
+        $refreshToken = null;
+        
+        // refreshTokenが存在する場合のみ取得
+        if ($accessToken->token && $accessToken->token->refreshToken) {
+            $refreshToken = $accessToken->token->refreshToken;
+        }
 
         // PKCE検証: セッションが存在し、code_challengeが設定されている場合は必須
         if ($session && $session->code_challenge && !$request->has('code_verifier')) {
