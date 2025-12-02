@@ -46,12 +46,34 @@ class JwtVerificationService
 
     private function getJwks(): Key
     {
-        $jwks = Cache::remember('oidc_jwks', 3600, function () {
+        $jwksUri = config('oidc.rp.idp_jwks_uri');
+        
+        if (!$jwksUri) {
+            throw new \RuntimeException('JWKS URI not configured');
+        }
+
+        $jwks = Cache::remember('oidc_jwks', 3600, function () use ($jwksUri) {
             $client = new Client();
-            $response = $client->get(config('oidc.rp.idp_jwks_uri'));
             
-            return json_decode($response->getBody()->getContents(), true);
+            try {
+                $response = $client->get($jwksUri);
+            } catch (\GuzzleHttp\Exception\RequestException $e) {
+                throw new \RuntimeException('Failed to fetch JWKS: ' . $e->getMessage(), 0, $e);
+            }
+            
+            $body = $response->getBody()->getContents();
+            $jwks = json_decode($body, true);
+
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                throw new \RuntimeException('Invalid JSON in JWKS: ' . json_last_error_msg());
+            }
+
+            return $jwks;
         });
+
+        if (!isset($jwks['keys']) || !is_array($jwks['keys']) || empty($jwks['keys'])) {
+            throw new \RuntimeException('No keys found in JWKS');
+        }
 
         // 最初のキーを使用（実際の実装ではkidに基づいて選択）
         $key = $jwks['keys'][0];
@@ -62,11 +84,27 @@ class JwtVerificationService
 
     private function convertJwkToPem(array $jwk): string
     {
-        $n = OidcHelper::base64url_decode($jwk['n']);
-        $e = OidcHelper::base64url_decode($jwk['e']);
+        if (!isset($jwk['n']) || !isset($jwk['e'])) {
+            throw new \RuntimeException('Invalid JWK: missing required fields (n, e)');
+        }
+
+        if ($jwk['kty'] !== 'RSA') {
+            throw new \RuntimeException('Unsupported key type: ' . ($jwk['kty'] ?? 'unknown'));
+        }
+
+        try {
+            $n = OidcHelper::base64url_decode($jwk['n']);
+            $e = OidcHelper::base64url_decode($jwk['e']);
+        } catch (\Exception $e) {
+            throw new \RuntimeException('Failed to decode JWK: ' . $e->getMessage(), 0, $e);
+        }
 
         $modulus = gmp_import($n);
         $exponent = gmp_import($e);
+
+        if ($modulus === false || $exponent === false) {
+            throw new \RuntimeException('Failed to import RSA parameters');
+        }
 
         $rsa = [
             'n' => gmp_export($modulus),
@@ -78,10 +116,14 @@ class JwtVerificationService
         ]);
 
         if (!$publicKeyResource) {
-            throw new \Exception('Failed to create public key');
+            throw new \RuntimeException('Failed to create public key: ' . openssl_error_string());
         }
 
         $publicKeyDetails = openssl_pkey_get_details($publicKeyResource);
+        
+        if ($publicKeyDetails === false || !isset($publicKeyDetails['key'])) {
+            throw new \RuntimeException('Failed to get public key details');
+        }
         
         return $publicKeyDetails['key'];
     }

@@ -59,14 +59,31 @@ class OidcController extends Controller
         $codeVerifier = Session::get('oidc_code_verifier');
         $nonce = Session::get('oidc_nonce');
 
-        $tokens = $this->oidcService->exchangeCodeForTokens(
-            $request->code,
-            $codeVerifier,
-            $request->state
-        );
+        if (!$codeVerifier) {
+            abort(400, 'Missing code_verifier in session');
+        }
+
+        try {
+            $tokens = $this->oidcService->exchangeCodeForTokens(
+                $request->code,
+                $codeVerifier,
+                $request->state
+            );
+        } catch (\Exception $e) {
+            abort(500, 'Failed to exchange authorization code: ' . $e->getMessage());
+        }
+
+        if (!isset($tokens['id_token'])) {
+            abort(500, 'Invalid token response: missing id_token');
+        }
 
         $idToken = $tokens['id_token'];
-        $userInfo = $this->oidcService->verifyIdToken($idToken, $nonce);
+        
+        try {
+            $userInfo = $this->oidcService->verifyIdToken($idToken, $nonce);
+        } catch (\Exception $e) {
+            abort(400, 'Invalid ID token: ' . $e->getMessage());
+        }
 
         Session::put('oidc_user', $userInfo);
         Session::put('oidc_access_token', $tokens['access_token']);

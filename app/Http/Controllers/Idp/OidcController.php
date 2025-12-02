@@ -98,6 +98,10 @@ class OidcController extends Controller
     {
         $user = $request->user();
         
+        if (!$user) {
+            abort(401, 'Unauthorized');
+        }
+        
         return response()->json([
             'sub' => (string) $user->id,
             'name' => $user->name,

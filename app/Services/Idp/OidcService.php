@@ -28,9 +28,26 @@ class OidcService
 
     public function getJwks(): array
     {
-        $publicKey = file_get_contents(storage_path('oauth-public.key'));
+        $publicKeyPath = storage_path('oauth-public.key');
+        
+        if (!file_exists($publicKeyPath)) {
+            throw new \RuntimeException('OAuth public key not found. Please run: php artisan passport:keys');
+        }
+
+        $publicKey = file_get_contents($publicKeyPath);
+        if ($publicKey === false) {
+            throw new \RuntimeException('Failed to read OAuth public key');
+        }
+
         $publicKeyResource = openssl_pkey_get_public($publicKey);
+        if ($publicKeyResource === false) {
+            throw new \RuntimeException('Invalid OAuth public key format');
+        }
+
         $details = openssl_pkey_get_details($publicKeyResource);
+        if ($details === false || !isset($details['rsa'])) {
+            throw new \RuntimeException('Failed to get RSA key details');
+        }
 
         $modulus = OidcHelper::base64url_encode($details['rsa']['n']);
         $exponent = OidcHelper::base64url_encode($details['rsa']['e']);

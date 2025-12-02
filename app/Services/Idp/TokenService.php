@@ -82,7 +82,11 @@ class TokenService
         $client = Client::where('id', $request->client_id)
             ->where('secret', $request->client_secret)
             ->where('revoked', false)
-            ->firstOrFail();
+            ->first();
+        
+        if (!$client) {
+            abort(400, 'Invalid client credentials');
+        }
 
         $authCode = DB::table('oauth_auth_codes')
             ->where('id', $request->code)
@@ -112,8 +116,13 @@ class TokenService
         $user = User::findOrFail($authCode->user_id);
         $scopes = explode(' ', $authCode->scopes);
 
-        $accessToken = $user->createToken('access_token', $scopes);
+        $accessToken = $user->createToken('access_token', $scopes, $client);
         $refreshToken = $accessToken->token->refreshToken;
+
+        // PKCE検証: セッションが存在し、code_challengeが設定されている場合は必須
+        if ($session && $session->code_challenge && !$request->has('code_verifier')) {
+            abort(400, 'code_verifier is required');
+        }
 
         $idToken = $this->createIdToken($user, $client, $scopes, $session->nonce ?? null);
 
@@ -121,29 +130,48 @@ class TokenService
             ->where('id', $authCode->id)
             ->update(['revoked' => true]);
 
-        return response()->json([
+        $response = [
             'access_token' => $accessToken->accessToken,
             'token_type' => 'Bearer',
-            'expires_in' => config('oidc.idp.access_token_lifetime'),
-            'refresh_token' => $refreshToken->id,
+            'expires_in' => config('oidc.idp.access_token_lifetime', 3600),
             'id_token' => $idToken,
             'scope' => $authCode->scopes,
-        ]);
+        ];
+
+        // refresh_tokenが存在する場合のみ追加
+        if ($refreshToken) {
+            $response['refresh_token'] = $refreshToken->id;
+        }
+
+        return response()->json($response);
     }
 
     private function createIdToken(User $user, Client $client, array $scopes, ?string $nonce): string
     {
+        $privateKeyPath = storage_path('oauth-private.key');
+        $publicKeyPath = storage_path('oauth-public.key');
+
+        if (!file_exists($privateKeyPath) || !file_exists($publicKeyPath)) {
+            throw new \RuntimeException('OAuth keys not found. Please run: php artisan passport:keys');
+        }
+
         $config = Configuration::forAsymmetricSigner(
             new Sha256(),
-            InMemory::file(storage_path('oauth-private.key')),
-            InMemory::file(storage_path('oauth-public.key'))
+            InMemory::file($privateKeyPath),
+            InMemory::file($publicKeyPath)
         );
 
         $now = new \DateTimeImmutable();
-        $expiresAt = $now->modify('+' . config('oidc.idp.id_token_lifetime') . ' seconds');
+        $idTokenLifetime = config('oidc.idp.id_token_lifetime', 3600);
+        $expiresAt = $now->modify('+' . $idTokenLifetime . ' seconds');
+        
+        $issuer = config('oidc.idp.issuer');
+        if (!$issuer) {
+            throw new \RuntimeException('OIDC issuer not configured');
+        }
 
         $builder = $config->builder()
-            ->issuedBy(config('oidc.idp.issuer'))
+            ->issuedBy($issuer)
             ->permittedFor((string) $client->id)
             ->relatedTo((string) $user->id)  // 'sub' クレームを設定
             ->identifiedBy(Str::random(40))
