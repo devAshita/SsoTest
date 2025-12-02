@@ -1,0 +1,28 @@
+[t-ieyasu@www3953 ~/SsoTestIdp]$ php artisan passport:install
+Encryption keys generated successfully.
+Personal access client created successfully.
+Client ID: 1
+Client secret: oyKMAyZes4nXXCAlnG6j6FiAJrC0qGcZW5d60XtT
+Password grant client created successfully.
+Client ID: 2
+Client secret: 6UjvxmX3vVbDBIyfOE5ZCoxUBFRlzQl5N4BfXswD
+[t-ieyasu@www3953 ~/SsoTestIdp]$ php artisan passport:keys
+Encryption keys already exist. Use the --force option to overwrite them.
+[t-ieyasu@www3953 ~/SsoTestIdp]$
+[t-ieyasu@www3953 ~/SsoTestIdp]$
+[t-ieyasu@www3953 ~/SsoTestIdp]$ php artisan passport:client
+
+ Which user ID should the client be assigned to? (Optional):
+ > 1
+
+ What should we name the client?:
+ > sso_test_rp_1
+
+ Where should we redirect the request after authorization? [http://localhost/auth/callback]:
+ > https://t-ieyasu.sakura.ne.jp/SsoTestRp/oauth/callback
+
+New client created successfully.
+Client ID: 3
+Client secret: omCQcOKFentfqn5wrt4lW5QNIKTz8ac7YBnscGlX
+[t-ieyasu@www3953 ~/SsoTestIdp]$
+

@@ -58,8 +58,9 @@ OIDC_IDP_TOKEN_ENDPOINT=http://localhost:8000/oauth/token
 OIDC_IDP_USERINFO_ENDPOINT=http://localhost:8000/oauth/userinfo
 OIDC_IDP_END_SESSION_ENDPOINT=http://localhost:8000/oauth/logout
 OIDC_IDP_JWKS_URI=http://localhost:8000/.well-known/jwks.json
-OIDC_CLIENT_ID=your-client-id
-OIDC_CLIENT_SECRET=your-client-secret
+# 以下はIDPでOAuth 2.0クライアント作成後に取得した値を設定してください
+OIDC_CLIENT_ID=your-client-id  # ステップ6で取得したClient IDに置き換え
+OIDC_CLIENT_SECRET=your-client-secret  # ステップ6で取得したClient Secretに置き換え
 OIDC_REDIRECT_URI=http://localhost:8001/oauth/callback
 OIDC_USE_PKCE=true
 OIDC_CODE_CHALLENGE_METHOD=S256
@@ -93,11 +94,31 @@ php artisan passport:keys
 
 ### 6. OAuth 2.0クライアントの作成（IDPで実行）
 
+IDPサーバーで以下のコマンドを実行します：
+
 ```bash
 php artisan passport:client
 ```
 
-作成されたClient IDとClient SecretをRPの`.env`に設定します。
+対話形式で以下の情報を入力します：
+- **名前**: 任意の名前（例: "RP Client"）
+- **リダイレクトURI**: RPのコールバックURL（例: `http://localhost:8001/oauth/callback`）
+
+実行後、以下のような出力が表示されます：
+
+```
+Client ID: 1
+Client secret: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+```
+
+**重要**: このClient IDとClient Secretをコピーして、RPの`.env`ファイルに設定してください：
+
+```env
+OIDC_CLIENT_ID=1
+OIDC_CLIENT_SECRET=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+```
+
+**注意**: Client Secretは一度しか表示されないため、必ずコピーして安全に保管してください。
 
 ### 7. テストユーザーの作成
 
