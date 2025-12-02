@@ -96,6 +96,9 @@
 
         <form method="POST" action="{{ route('login') }}">
             @csrf
+            @if(isset($redirect_uri))
+                <input type="hidden" name="redirect_uri" value="{{ $redirect_uri }}">
+            @endif
             
             <div class="form-group">
                 <label for="email">メールアドレス</label>

@@ -8,9 +8,11 @@ use Illuminate\Support\Facades\Auth;
 
 class AuthController extends Controller
 {
-    public function showLoginForm()
+    public function showLoginForm(Request $request)
     {
-        return view('idp.login');
+        return view('idp.login', [
+            'redirect_uri' => $request->input('redirect_uri'),
+        ]);
     }
 
     public function login(Request $request)
@@ -23,8 +25,9 @@ class AuthController extends Controller
         if (Auth::attempt($credentials, $request->boolean('remember'))) {
             $request->session()->regenerate();
             
+            // redirect_uriパラメータがある場合は、そのURLにリダイレクト
             if ($request->has('redirect_uri')) {
-                return redirect()->intended($request->input('redirect_uri'));
+                return redirect($request->input('redirect_uri'));
             }
             
             return redirect()->intended('/');
