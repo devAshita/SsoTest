@@ -2,6 +2,7 @@
 
 namespace App\Services\Rp;
 
+use App\Helpers\OidcHelper;
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
 use GuzzleHttp\Client;
@@ -61,8 +62,8 @@ class JwtVerificationService
 
     private function convertJwkToPem(array $jwk): string
     {
-        $n = base64url_decode($jwk['n']);
-        $e = base64url_decode($jwk['e']);
+        $n = OidcHelper::base64url_decode($jwk['n']);
+        $e = OidcHelper::base64url_decode($jwk['e']);
 
         $modulus = gmp_import($n);
         $exponent = gmp_import($e);
@@ -84,10 +85,5 @@ class JwtVerificationService
         
         return $publicKeyDetails['key'];
     }
-}
-
-function base64url_decode($data): string
-{
-    return base64_decode(strtr($data, '-_', '+/'));
 }
 

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Rp;
 
+use App\Helpers\OidcHelper;
 use App\Http\Controllers\Controller;
 use App\Services\Rp\OidcService;
 use Illuminate\Http\Request;
@@ -23,7 +24,7 @@ class OidcController extends Controller
         Session::put('oidc_nonce', $nonce);
 
         $codeVerifier = Str::random(128);
-        $codeChallenge = base64url_encode(hash('sha256', $codeVerifier, true));
+        $codeChallenge = OidcHelper::base64url_encode(hash('sha256', $codeVerifier, true));
         
         Session::put('oidc_code_verifier', $codeVerifier);
 
@@ -85,10 +86,5 @@ class OidcController extends Controller
 
         return redirect($logoutUrl);
     }
-}
-
-function base64url_encode($data): string
-{
-    return rtrim(strtr(base64_encode($data), '+/', '-_'), '=');
 }
 

@@ -2,6 +2,8 @@
 
 namespace App\Services\Idp;
 
+use App\Helpers\OidcHelper;
+
 class OidcService
 {
     public function getDiscoveryDocument(): array
@@ -30,8 +32,8 @@ class OidcService
         $publicKeyResource = openssl_pkey_get_public($publicKey);
         $details = openssl_pkey_get_details($publicKeyResource);
 
-        $modulus = base64url_encode($details['rsa']['n']);
-        $exponent = base64url_encode($details['rsa']['e']);
+        $modulus = OidcHelper::base64url_encode($details['rsa']['n']);
+        $exponent = OidcHelper::base64url_encode($details['rsa']['e']);
 
         return [
             'keys' => [
@@ -46,10 +48,5 @@ class OidcService
             ],
         ];
     }
-}
-
-function base64url_encode($data): string
-{
-    return rtrim(strtr(base64_encode($data), '+/', '-_'), '=');
 }
 

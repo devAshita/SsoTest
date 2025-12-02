@@ -2,6 +2,7 @@
 
 namespace App\Services\Idp;
 
+use App\Helpers\OidcHelper;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -79,7 +80,7 @@ class TokenService
 
         if ($session && $session->code_challenge) {
             $codeVerifier = $request->code_verifier;
-            $codeChallenge = base64url_encode(hash('sha256', $codeVerifier, true));
+            $codeChallenge = OidcHelper::base64url_encode(hash('sha256', $codeVerifier, true));
             
             if ($codeChallenge !== $session->code_challenge) {
                 abort(400, 'Invalid code_verifier');
@@ -140,10 +141,5 @@ class TokenService
 
         return $builder->getToken($config->signer(), $config->signingKey())->toString();
     }
-}
-
-function base64url_encode($data): string
-{
-    return rtrim(strtr(base64_encode($data), '+/', '-_'), '=');
 }
 

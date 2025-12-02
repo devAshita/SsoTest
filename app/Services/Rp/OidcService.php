@@ -5,7 +5,6 @@ namespace App\Services\Rp;
 use App\Services\Rp\DiscoveryService;
 use App\Services\Rp\JwtVerificationService;
 use GuzzleHttp\Client;
-use Illuminate\Support\Facades\Cache;
 
 class OidcService
 {
