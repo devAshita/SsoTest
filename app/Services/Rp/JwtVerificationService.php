@@ -88,8 +88,8 @@ class JwtVerificationService
             throw new \RuntimeException('Invalid JWK: missing required fields (n, e)');
         }
 
-        if ($jwk['kty'] !== 'RSA') {
-            throw new \RuntimeException('Unsupported key type: ' . ($jwk['kty'] ?? 'unknown'));
+        if (isset($jwk['kty']) && $jwk['kty'] !== 'RSA') {
+            throw new \RuntimeException('Unsupported key type: ' . $jwk['kty']);
         }
 
         try {
@@ -99,6 +99,7 @@ class JwtVerificationService
             throw new \RuntimeException('Failed to decode JWK: ' . $e->getMessage(), 0, $e);
         }
 
+        // GMPを使用してモジュラスと指数を取得
         $modulus = gmp_import($n);
         $exponent = gmp_import($e);
 
@@ -106,26 +107,79 @@ class JwtVerificationService
             throw new \RuntimeException('Failed to import RSA parameters');
         }
 
-        $rsa = [
-            'n' => gmp_export($modulus),
-            'e' => gmp_export($exponent),
-        ];
-
-        $publicKeyResource = openssl_pkey_new([
-            'rsa' => $rsa,
-        ]);
-
-        if (!$publicKeyResource) {
-            throw new \RuntimeException('Failed to create public key: ' . openssl_error_string());
-        }
-
-        $publicKeyDetails = openssl_pkey_get_details($publicKeyResource);
+        // DER形式の公開鍵を構築
+        $der = $this->buildDerPublicKey($modulus, $exponent);
         
-        if ($publicKeyDetails === false || !isset($publicKeyDetails['key'])) {
-            throw new \RuntimeException('Failed to get public key details');
+        // PEM形式に変換
+        $pem = "-----BEGIN PUBLIC KEY-----\n";
+        $pem .= chunk_split(base64_encode($der), 64, "\n");
+        $pem .= "-----END PUBLIC KEY-----\n";
+        
+        return $pem;
+    }
+
+    /**
+     * RSA公開鍵をDER形式で構築
+     */
+    private function buildDerPublicKey($modulus, $exponent): string
+    {
+        // ASN.1 DER形式でRSA公開鍵を構築
+        // SEQUENCE { SEQUENCE { OID, NULL }, BIT STRING { SEQUENCE { INTEGER, INTEGER } } }
+        
+        // RSA OID: 1.2.840.113549.1.1.1
+        $rsaOid = "\x30\x0d\x06\x09\x2a\x86\x48\x86\xf7\x0d\x01\x01\x01\x05\x00";
+        
+        // モジュラスと指数をDER形式のINTEGERに変換
+        $modulusDer = $this->derEncodeInteger($modulus);
+        $exponentDer = $this->derEncodeInteger($exponent);
+        
+        // SEQUENCE { INTEGER modulus, INTEGER exponent }
+        $rsaKeySequence = "\x30" . $this->derEncodeLength(strlen($modulusDer) + strlen($exponentDer)) 
+                         . $modulusDer . $exponentDer;
+        
+        // BIT STRING
+        $bitString = "\x03" . $this->derEncodeLength(strlen($rsaKeySequence) + 1) 
+                    . "\x00" . $rsaKeySequence;
+        
+        // SEQUENCE { SEQUENCE { OID, NULL }, BIT STRING }
+        $publicKeySequence = "\x30" . $this->derEncodeLength(strlen($rsaOid) + strlen($bitString))
+                           . $rsaOid . $bitString;
+        
+        return $publicKeySequence;
+    }
+
+    /**
+     * GMP整数をDER形式のINTEGERに変換
+     */
+    private function derEncodeInteger($gmpInt): string
+    {
+        $bytes = gmp_export($gmpInt, 1, GMP_MSW_FIRST | GMP_BIG_ENDIAN);
+        
+        // 最上位ビットが1の場合、先頭に0を追加（負数として解釈されないように）
+        if (ord($bytes[0]) & 0x80) {
+            $bytes = "\x00" . $bytes;
         }
         
-        return $publicKeyDetails['key'];
+        return "\x02" . $this->derEncodeLength(strlen($bytes)) . $bytes;
+    }
+
+    /**
+     * DER形式の長さをエンコード
+     */
+    private function derEncodeLength(int $length): string
+    {
+        if ($length < 0x80) {
+            return chr($length);
+        }
+        
+        $bytes = '';
+        $temp = $length;
+        while ($temp > 0) {
+            $bytes = chr($temp & 0xff) . $bytes;
+            $temp >>= 8;
+        }
+        
+        return chr(0x80 | strlen($bytes)) . $bytes;
     }
 }
 
