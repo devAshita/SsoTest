@@ -28,18 +28,42 @@ class TokenService
             'expires_at' => now()->addMinutes(10),
         ]);
 
-        DB::table('oidc_sessions')->insert([
-            'user_id' => $user->id,
-            'session_id' => session()->getId(),
-            'client_id' => $params['client_id'],
-            'nonce' => $params['nonce'] ?? null,
-            'state' => $params['state'],
-            'code_challenge' => $params['code_challenge'] ?? null,
-            'code_challenge_method' => $params['code_challenge_method'] ?? null,
-            'expires_at' => now()->addHours(1),
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+        $sessionId = session()->getId();
+        
+        // 既存のセッションをチェック
+        $existingSession = DB::table('oidc_sessions')
+            ->where('session_id', $sessionId)
+            ->where('client_id', $params['client_id'])
+            ->first();
+        
+        if ($existingSession) {
+            // 既存のセッションを更新
+            DB::table('oidc_sessions')
+                ->where('id', $existingSession->id)
+                ->update([
+                    'user_id' => $user->id,
+                    'nonce' => $params['nonce'] ?? null,
+                    'state' => $params['state'],
+                    'code_challenge' => $params['code_challenge'] ?? null,
+                    'code_challenge_method' => $params['code_challenge_method'] ?? null,
+                    'expires_at' => now()->addHours(1),
+                    'updated_at' => now(),
+                ]);
+        } else {
+            // 新規セッションを挿入
+            DB::table('oidc_sessions')->insert([
+                'user_id' => $user->id,
+                'session_id' => $sessionId,
+                'client_id' => $params['client_id'],
+                'nonce' => $params['nonce'] ?? null,
+                'state' => $params['state'],
+                'code_challenge' => $params['code_challenge'] ?? null,
+                'code_challenge_method' => $params['code_challenge_method'] ?? null,
+                'expires_at' => now()->addHours(1),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
 
         return $code;
     }
