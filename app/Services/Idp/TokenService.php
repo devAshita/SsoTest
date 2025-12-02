@@ -145,10 +145,10 @@ class TokenService
         $builder = $config->builder()
             ->issuedBy(config('oidc.idp.issuer'))
             ->permittedFor((string) $client->id)
+            ->relatedTo((string) $user->id)  // 'sub' クレームを設定
             ->identifiedBy(Str::random(40))
             ->issuedAt($now)
             ->expiresAt($expiresAt)
-            ->withClaim('sub', (string) $user->id)
             ->withClaim('auth_time', $now->getTimestamp());
         
         // nonceがnullでない場合のみ追加
