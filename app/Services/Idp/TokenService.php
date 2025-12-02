@@ -174,6 +174,9 @@ class TokenService
         if (!$issuer) {
             throw new \RuntimeException('OIDC issuer not configured');
         }
+        
+        // 末尾のスラッシュを削除して正規化
+        $issuer = rtrim($issuer, '/');
 
         $builder = $config->builder()
             ->issuedBy($issuer)

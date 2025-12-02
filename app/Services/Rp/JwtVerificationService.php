@@ -20,8 +20,11 @@ class JwtVerificationService
             throw new \Exception('Invalid token: ' . $e->getMessage());
         }
 
-        if ($decoded->iss !== config('oidc.rp.idp_issuer')) {
-            throw new \Exception('Invalid issuer');
+        $expectedIssuer = rtrim(config('oidc.rp.idp_issuer'), '/');
+        $actualIssuer = rtrim($decoded->iss, '/');
+        
+        if ($actualIssuer !== $expectedIssuer) {
+            throw new \Exception("Invalid issuer. Expected: '{$expectedIssuer}', Got: '{$actualIssuer}'");
         }
 
         if ($decoded->aud !== config('oidc.rp.client_id')) {
